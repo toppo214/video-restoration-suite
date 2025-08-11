@@ -1,0 +1,9 @@
+torch==2.1.0
+torchvision
+numpy
+opencv-python
+ffmpeg-python
+gfpgan
+real-esrgan
+rife-ncnn-vulkan
+gradio
