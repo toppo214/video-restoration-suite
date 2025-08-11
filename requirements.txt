@@ -1,9 +1,27 @@
-torch==2.1.0
-torchvision
-numpy
-opencv-python
+# Core
+torch==2.0.1+cu118     # match Vast.ai CUDA version (adjust if needed)
+torchvision==0.15.2+cu118
+torchaudio==2.0.2+cu118
+--extra-index-url https://download.pytorch.org/whl/cu118
+
+# Video I/O
 ffmpeg-python
-gfpgan
-real-esrgan
-rife-ncnn-vulkan
-gradio
+opencv-python
+
+# Real-ESRGAN from source
+git+https://github.com/xinntao/Real-ESRGAN.git
+
+# RIFE interpolation from source
+git+https://github.com/megvii-research/ECCV2022-RIFE.git
+
+# Image enhancement utilities
+numpy
+Pillow
+scikit-image
+
+# Optional face restoration
+git+https://github.com/TencentARC/GFPGAN.git
+
+# CLI helpers
+tqdm
+click
