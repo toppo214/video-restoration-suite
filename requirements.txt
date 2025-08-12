@@ -1,8 +1,8 @@
 # Core
-torch==2.0.1+cu121        # Match Vast.ai CUDA version (CUDA 12.0.1)
-torchvision==0.15.2+cu121
-torchaudio==2.0.2+cu121
---extra-index-url https://download.pytorch.org/whl/cu121  # CUDA 12.0.1 support
+torch==2.0.1+cu120        # Match Vast.ai CUDA version (CUDA 12.0.1)
+torchvision==0.15.2+cu120
+torchaudio==2.0.2+cu120
+--extra-index-url https://download.pytorch.org/whl/cu120  # CUDA 12.0.1 support
 
 # Video I/O
 ffmpeg-python
