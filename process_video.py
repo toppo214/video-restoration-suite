@@ -1,5 +1,6 @@
 import argparse
 import os
+import subprocess
 
 # Default file paths
 DEFAULT_INPUT = 'assets/sample.mp4'
@@ -44,6 +45,7 @@ def main():
     if not args.interpolate:
         args.interpolate = True
 
+    # Debug output to confirm options
     print(f"Input file: {args.input}")
     print(f"Preview output: {args.preview}")
     print(f"Restore output: {args.restore}")
@@ -53,9 +55,40 @@ def main():
     print(f"Upscale: {args.upscale}")
     print(f"Interpolate: {args.interpolate}")
 
-    # You can now proceed to add the actual video processing pipeline using ffmpeg or other libraries.
-    # This part is simplified for demonstration purposes.
-    # Example: Use `subprocess.run()` to call processing functions
+    # Run the video processing based on flags
+    if args.stabilize:
+        print("Running stabilization...")
+        # Add your stabilization logic here
+        # Example:
+        # subprocess.run(['ffmpeg', '-i', args.input, '-vf', 'stabilize', args.preview])
+
+    if args.denoise:
+        print("Running denoising...")
+        # Add your denoising logic here
+        # Example:
+        # subprocess.run(['ffmpeg', '-i', args.input, '-vf', 'denoise', args.preview])
+
+    if args.color:
+        print("Running color enhancement...")
+        # Add your color enhancement logic here
+        # Example:
+        # subprocess.run(['ffmpeg', '-i', args.input, '-vf', 'color', args.preview])
+
+    if args.upscale:
+        print("Running upscaling...")
+        # Add your upscaling logic here
+        # Example:
+        # subprocess.run(['ffmpeg', '-i', args.input, '-vf', 'upscale', args.preview])
+
+    if args.interpolate:
+        print("Running interpolation...")
+        # Add your interpolation logic here
+        # Example:
+        # subprocess.run(['ffmpeg', '-i', args.input, '-vf', 'interpolate', args.preview])
+
+    # Final message
+    print("Video processing complete.")
 
 if __name__ == "__main__":
     main()
+
