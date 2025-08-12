@@ -70,10 +70,14 @@ jobs:
             python3 process_video.py --input input/sample.mp4 --restore output/full_restored.mp4 --stabilize --denoise --color --upscale --interpolate --keep-temp || echo "⚠️ restore step returned non-zero"
           fi
 
-      - name: List outputs
+      - name: Verify outputs
         run: |
-          ls -la output || true
-          du -h output/* || true
+          if [ -f "output/preview.mp4" ] && [ -f "output/full_restored.mp4" ]; then
+            echo "✅ Videos are ready for upload!"
+          else
+            echo "❌ Videos were not processed correctly!"
+            exit 1
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
