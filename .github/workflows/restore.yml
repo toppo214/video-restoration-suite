@@ -1,86 +1,103 @@
-name: Video Restoration (Preview + Full)
+name: AI Video Restoration Pipeline
 
 on:
   workflow_dispatch:
     inputs:
-      mode:
-        description: "Processing mode: preview, restore, or both"
+      input_url:
+        description: "URL of source video"
         required: true
-        default: "both"
+      output_name:
+        description: "Output filename"
+        default: "restored_4k.mp4"
+      processing_mode:
+        description: "Processing intensity"
+        default: "full"
         type: choice
         options:
           - preview
-          - restore
-          - both
+          - standard
+          - full
+
+env:
+  MODEL_PATH: "RealESRGAN/weights/RealESRGAN_x4plus.pth"
+  TEMP_DIR: "/tmp/video_processing"
 
 jobs:
-  run_pipeline:
+  setup:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
-
+    outputs:
+      model_ready: ${{ steps.model_check.outputs.exists }}
     steps:
-      - name: Checkout repository
+      - name: Check models
+        id: model_check
+        run: |
+          if [ -f "$MODEL_PATH" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+  process:
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        gpu_enabled: [false]
+        include:
+          - gpu_enabled: true
+            runner: [self-hosted, gpu]
+    steps:
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
+      - name: Download source
+        run: |
+          mkdir -p input
+          wget "${{ github.event.inputs.input_url }}" -O input/source.mp4
+          echo "INPUT_FILE=input/source.mp4" >> $GITHUB_ENV
+
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
       - name: Install system deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg git
+          sudo apt-get install -y ffmpeg libsm6 libxext6
 
-      - name: Install Python deps (best-effort)
+      - name: Install Python deps
         run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt || echo "⚠️ pip install had issues, continuing"
+          pip install torch torchvision --extra-index-url https://download.pytorch.org/whl/cu118
+          pip install opencv-python basicsr realesrgan tqdm
 
-      - name: Optional clone heavy-models (best-effort)
+      - name: Conditional model download
+        if: needs.setup.outputs.model_ready == 'false'
         run: |
-          if [ ! -d "Real-ESRGAN" ]; then
-            git clone --depth 1 https://github.com/xinntao/Real-ESRGAN.git Real-ESRGAN || echo "⚠️ Real-ESRGAN clone failed"
-          fi
-          if [ ! -d "ECCV2022-RIFE" ] && [ ! -d "RIFE" ]; then
-            git clone --depth 1 https://github.com/megvii-research/ECCV2022-RIFE.git ECCV2022-RIFE || echo "⚠️ RIFE clone failed"
-          fi
+          mkdir -p RealESRGAN/weights
+          wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/RealESRGAN_x4plus.pth -O $MODEL_PATH
 
-      - name: Prepare input/output (use repo asset)
+      - name: Run processing
         run: |
-          mkdir -p input output
-          if [ -f "assets/sample.mp4" ]; then
-            cp assets/sample.mp4 input/sample.mp4
-          else
-            echo "❌ assets/sample.mp4 not found in repo" && exit 1
-          fi
-          ffprobe -v error -show_format -show_streams input/sample.mp4 || (echo "❌ ffprobe failed — input invalid" && exit 1)
+          python process_video.py \
+            --input "$INPUT_FILE" \
+            --output "${{ github.event.inputs.output_name }}" \
+            --temp_dir "$TEMP_DIR" \
+            --scale ${{ contains(github.event.inputs.processing_mode, 'full') && '4' || '2' }} \
+            --tile_size ${{ matrix.gpu_enabled && '400' || '200' }} \
+            --model_path "$MODEL_PATH" \
+            ${{ github.event.inputs.processing_mode == 'preview' && '--skip_errors' || '' }}
 
-      - name: Run preview + full according to mode
-        run: |
-          MODE="${{ github.event.inputs.mode }}"
-          echo "Mode = $MODE"
-          if [ "$MODE" = "preview" ] || [ "$MODE" = "both" ]; then
-            python3 process_video.py --input input/sample.mp4 --preview output/preview.mp4 --keep-temp || echo "⚠️ preview step returned non-zero"
-          fi
-          if [ "$MODE" = "restore" ] || [ "$MODE" = "both" ]; then
-            # default: do stabilization, denoise, color, upscale and interpolate (best-effort)
-            python3 process_video.py --input input/sample.mp4 --restore output/full_restored.mp4 --stabilize --denoise --color --upscale --interpolate --keep-temp || echo "⚠️ restore step returned non-zero"
-          fi
-
-      - name: Verify outputs
-        run: |
-          if [ -f "output/preview.mp4" ] && [ -f "output/full_restored.mp4" ]; then
-            echo "✅ Videos are ready for upload!"
-          else
-            echo "❌ Videos were not processed correctly!"
-            exit 1
-          fi
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload results
+        uses: actions/upload-artifact@v3
         with:
-          name: restoration-output
-          path: output/
+          name: restored-video
+          path: |
+            ${{ github.event.inputs.output_name }}
+            processing_logs.txt
+
+      - name: Cleanup
+        if: always()
+        run: rm -rf "$TEMP_DIR"
