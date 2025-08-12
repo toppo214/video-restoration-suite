@@ -1,0 +1,17 @@
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore virtual environments
+venv/
+
+# Ignore large media files (optional)
+*.mp4
+*.mov
+*.avi
+*.mkv
+
+# Ignore git history
+.git
+.gitignore

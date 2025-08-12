@@ -1,14 +1,22 @@
-# Use an official Python runtime as a parent image
-FROM python:3.9-slim
+FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
 
-# Set the working directory to /app
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    git python3 python3-pip ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Copy the current directory contents into the container at /app
-COPY . /app
+# Copy requirements
+COPY requirements.txt .
 
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python deps (requirements.txt should exist)
+RUN pip3 install --no-cache-dir -r requirements.txt || true
 
-# Run restore.py when the container launches
-CMD ["python", "restore.py"]
+# Copy source code
+COPY . .
+
+# Make entrypoint script executable
+RUN chmod +x /app/entrypoint.sh
+
+ENTRYPOINT ["/app/entrypoint.sh"]
