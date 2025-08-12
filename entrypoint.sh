@@ -1,18 +1,28 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-MODE=$1
+MODE=${1:-}
+INPUT=${2:-}
+OUTPUT=${3:-}
+shift 3 2>/dev/null || true
 
 mkdir -p /app/output
 
-if [ "$MODE" = "preview" ]; then
-    echo "Running PREVIEW mode..."
-    ffmpeg -f lavfi -i testsrc=duration=10:size=1280x720:rate=30 /app/output/preview.mp4
-elif [ "$MODE" = "full" ] || [ "$MODE" = "restore" ]; then
-    echo "Running FULL RESTORATION mode..."
-    ffmpeg -f lavfi -i testsrc=duration=30:size=3840x2160:rate=60 /app/output/full_restored.mp4
-else
-    echo "Unknown mode: $MODE"
-    echo "Usage: docker run --rm --gpus all -v \$(pwd)/output:/app/output video-restoration preview|full"
+case "$MODE" in
+  preview)
+    echo "ENTRYPOINT: preview -> input=${INPUT} output=${OUTPUT}"
+    python3 video-restoration-suite/preview.py --input "${INPUT}" --output "${OUTPUT}" "$@"
+    ;;
+  restore|full)
+    echo "ENTRYPOINT: full restore -> input=${INPUT} output=${OUTPUT}"
+    python3 video-restoration-suite/restore.py --input "${INPUT}" --output "${OUTPUT}" "$@"
+    ;;
+  shell)
+    echo "Dropping to shell for debugging..."
+    exec /bin/bash "$@"
+    ;;
+  *)
+    echo "Usage: docker run --rm --gpus all -v \$(pwd)/input:/app/input -v \$(pwd)/output:/app/output <image> preview|restore <input> <output>"
     exit 1
-fi
+    ;;
+esac
