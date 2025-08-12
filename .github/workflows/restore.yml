@@ -10,10 +10,6 @@ on:
 jobs:
   restore:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      actions: read
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,28 +21,30 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install dependencies except RIFE
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
+
+      - name: Install Python dependencies (with RIFE fail-safe)
+        run: |
+          set -e
           pip install --upgrade pip
-          grep -v "ECCV2022-RIFE" requirements.txt > requirements_no_rife.txt
-          pip install -r requirements_no_rife.txt
+          grep -v "ECCV2022-RIFE" requirements.txt > req_no_rife.txt
+          pip install -r req_no_rife.txt
+          pip install git+https://github.com/megvii-research/ECCV2022-RIFE.git || echo "⚠️ RIFE failed to install — skipping"
 
-      - name: Install RIFE manually
+      - name: Download sample video
         run: |
-          git clone https://github.com/megvii-research/ECCV2022-RIFE.git rife
-          cd rife
-          pip install -r requirements.txt || true
-
-      - name: Download test video
-        run: |
-          mkdir -p input
+          mkdir -p input output
           curl -L -o input/sample.mp4 https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4
 
       - name: Run Preview
         run: |
-          mkdir -p output
+          if [ ! -f "preview.py" ]; then
+            echo "❌ preview.py not found in repo root."
+            exit 1
+          fi
           python3 preview.py \
             --input input/sample.mp4 \
             --output output/preview.mp4
