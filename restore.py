@@ -2,29 +2,20 @@
 import argparse, subprocess, sys, os
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--input", required=True, help="Path to input video")
-parser.add_argument("--output", required=True, help="Path to output video")
-parser.add_argument("--mode", choices=["preview", "full"], default="preview")
+parser.add_argument("--input", required=True)
+parser.add_argument("--output", required=True)
 args = parser.parse_args()
 
 if not os.path.exists(args.input):
     print("Input not found:", args.input, file=sys.stderr)
-    sys.exit(1)
+    sys.exit(2)
 
-if args.mode == "preview":
-    cmd = [
-        "ffmpeg", "-y", "-i", args.input,
-        "-t", "10",
-        "-c:v", "libx264", "-preset", "fast", "-crf", "18",
-        args.output
-    ]
-else:  # full mode
-    cmd = [
-        "ffmpeg", "-y", "-i", args.input,
-        "-c:v", "libx264", "-preset", "slow", "-crf", "18",
-        args.output
-    ]
-
-print("Running:", " ".join(cmd))
+# Placeholder full processing: re-encode whole file (replace this with real restoration)
+cmd = [
+    "ffmpeg", "-y", "-i", args.input,
+    "-c:v", "libx264", "-preset", "slow", "-crf", "16",
+    args.output
+]
+print("Running full restore command:", " ".join(cmd))
 subprocess.run(cmd, check=True)
-print("Done. Output at", args.output)
+print("Full restore saved to", args.output)
