@@ -6,7 +6,6 @@ on:
     paths:
       - '**.py'
       - 'requirements.txt'
-      - '.github/workflows/restore.yml'
 
 jobs:
   restore:
@@ -26,26 +25,29 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
+      - name: Install dependencies except RIFE
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           pip install --upgrade pip
-          pip install -r requirements.txt
+          grep -v "ECCV2022-RIFE" requirements.txt > requirements_no_rife.txt
+          pip install -r requirements_no_rife.txt
 
-      - name: Prepare input/output folders
+      - name: Install RIFE manually
         run: |
-          mkdir -p input output
+          git clone https://github.com/megvii-research/ECCV2022-RIFE.git rife
+          cd rife
+          pip install -r requirements.txt || true
 
-      - name: Download test video (if no input provided)
+      - name: Download test video
         run: |
-          if [ -z "$(ls -A input)" ]; then
-            curl -L -o input/sample.mp4 https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4
-          fi
+          mkdir -p input
+          curl -L -o input/sample.mp4 https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4
 
-      - name: Run Preview Mode
+      - name: Run Preview
         run: |
-          python3 video-restoration-suite/preview.py \
+          mkdir -p output
+          python3 preview.py \
             --input input/sample.mp4 \
             --output output/preview.mp4
 
