@@ -1,28 +1,33 @@
 name: Video Restoration
 
 on:
-  workflow_dispatch:
-    inputs:
-      mode:
-        description: "Choose preview or full restore"
-        required: true
-        default: "preview"
-      input_video:
-        description: "Path or URL to input video"
-        required: true
+  workflow_dispatch:  # lets you run manually from Actions tab
+  push:
+    paths:
+      - '**.py'
+      - 'requirements.txt'
 
 jobs:
   restore:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      # Step 1: Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          python-version: "3.10"
+          submodules: recursive  # needed for Real-ESRGAN submodule
 
+      # Step 2: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # Step 3: Install dependencies
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -30,19 +35,22 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run preview or restore
+      # Step 4: Download sample video
+      - name: Download test video
         run: |
-          if [ "\${{ github.event.inputs.mode }}" = "preview" ]; then
-            python preview.py --input "\${{ github.event.inputs.input_video }}" --output preview.mp4
-          else
-            python restore.py --input "\${{ github.event.inputs.input_video }}" --output restored.mp4
-          fi
+          mkdir -p input
+          curl -L -o input/sample.mp4 https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4
 
-      - name: Upload result
-        uses: actions/upload-artifact@v3
+      # Step 5: Run Preview Mode
+      - name: Run Preview
+        run: |
+          python3 video-restoration-suite/preview.py \
+            --input input/sample.mp4 \
+            --output output/preview.mp4
+
+      # Step 6: Upload result
+      - name: Upload Preview Artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: output-video
-          path: |
-            preview.mp4
-            restored.mp4
-          if-no-files-found: ignore
+          name: preview-output
+          path: output/preview.mp4
