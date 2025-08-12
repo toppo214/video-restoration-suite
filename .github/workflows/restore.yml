@@ -1,0 +1,48 @@
+name: Video Restoration
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Choose preview or full restore"
+        required: true
+        default: "preview"
+      input_video:
+        description: "Path or URL to input video"
+        required: true
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run preview or restore
+        run: |
+          if [ "\${{ github.event.inputs.mode }}" = "preview" ]; then
+            python preview.py --input "\${{ github.event.inputs.input_video }}" --output preview.mp4
+          else
+            python restore.py --input "\${{ github.event.inputs.input_video }}" --output restored.mp4
+          fi
+
+      - name: Upload result
+        uses: actions/upload-artifact@v3
+        with:
+          name: output-video
+          path: |
+            preview.mp4
+            restored.mp4
+          if-no-files-found: ignore
