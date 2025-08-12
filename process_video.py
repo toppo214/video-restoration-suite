@@ -2,50 +2,30 @@ import argparse
 import os
 import subprocess
 
-# Default file paths
+# Default paths
 DEFAULT_INPUT = 'assets/sample.mp4'
 DEFAULT_PREVIEW_OUTPUT = 'output/preview.mp4'
 DEFAULT_RESTORE_OUTPUT = 'output/full_restored.mp4'
 
-# Parse arguments
+# Function to parse command-line arguments
 def parse_args():
     parser = argparse.ArgumentParser(description="Video restoration script.")
-    
-    # Input and output files
     parser.add_argument('--input', type=str, default=DEFAULT_INPUT, help="Input video file.")
-    parser.add_argument('--preview', type=str, default=DEFAULT_PREVIEW_OUTPUT, help="Preview output video.")
-    parser.add_argument('--restore', type=str, default=DEFAULT_RESTORE_OUTPUT, help="Full restored output video.")
-    
-    # Processing options
+    parser.add_argument('--preview', type=str, default=DEFAULT_PREVIEW_OUTPUT, help="Preview output.")
+    parser.add_argument('--restore', type=str, default=DEFAULT_RESTORE_OUTPUT, help="Restore output.")
     parser.add_argument('--stabilize', action='store_true', help="Enable stabilization.")
     parser.add_argument('--denoise', action='store_true', help="Enable denoising.")
     parser.add_argument('--color', action='store_true', help="Enable color enhancement.")
     parser.add_argument('--upscale', action='store_true', help="Enable upscaling.")
     parser.add_argument('--interpolate', action='store_true', help="Enable interpolation.")
-    
-    # Optional features
-    parser.add_argument('--skip-models', action='store_true', help="Skip loading heavy models.")
+    parser.add_argument('--skip-models', action='store_true', help="Skip heavy model loading.")
     parser.add_argument('--keep-temp', action='store_true', help="Keep temporary files.")
-    
     return parser.parse_args()
 
-# Main function to handle video processing
-def main():
-    args = parse_args()
-
-    # Default all processing options to True unless specified
-    if not args.stabilize:
-        args.stabilize = True
-    if not args.denoise:
-        args.denoise = True
-    if not args.color:
-        args.color = True
-    if not args.upscale:
-        args.upscale = True
-    if not args.interpolate:
-        args.interpolate = True
-
-    # Debug output to confirm options
+# Function for video processing
+def process_video(args):
+    # Print arguments for confirmation
+    print(f"Processing with the following options:")
     print(f"Input file: {args.input}")
     print(f"Preview output: {args.preview}")
     print(f"Restore output: {args.restore}")
@@ -55,39 +35,43 @@ def main():
     print(f"Upscale: {args.upscale}")
     print(f"Interpolate: {args.interpolate}")
 
-    # Run the video processing based on flags
-    if args.stabilize:
-        print("Running stabilization...")
-        # Add your stabilization logic here
-        # Example:
-        # subprocess.run(['ffmpeg', '-i', args.input, '-vf', 'stabilize', args.preview])
+    # Check if the input video exists
+    if not os.path.exists(args.input):
+        print(f"❌ Error: Input file {args.input} not found!")
+        return
 
-    if args.denoise:
-        print("Running denoising...")
-        # Add your denoising logic here
-        # Example:
-        # subprocess.run(['ffmpeg', '-i', args.input, '-vf', 'denoise', args.preview])
+    # Create output directory if it doesn't exist
+    os.makedirs(os.path.dirname(args.preview), exist_ok=True)
+    os.makedirs(os.path.dirname(args.restore), exist_ok=True)
 
-    if args.color:
-        print("Running color enhancement...")
-        # Add your color enhancement logic here
-        # Example:
-        # subprocess.run(['ffmpeg', '-i', args.input, '-vf', 'color', args.preview])
+    # Preview video processing using ffmpeg
+    if args.preview:
+        print("⚙️ Generating preview...")
+        cmd = f"ffmpeg -i {args.input} -t 10 -c:v libx264 -crf 18 {args.preview}"
+        subprocess.run(cmd, shell=True, check=True)
 
-    if args.upscale:
-        print("Running upscaling...")
-        # Add your upscaling logic here
-        # Example:
-        # subprocess.run(['ffmpeg', '-i', args.input, '-vf', 'upscale', args.preview])
+    # Full restoration processing (with stabilization, denoising, etc.)
+    if args.restore:
+        print("⚙️ Starting full restoration...")
+        cmd = f"ffmpeg -i {args.input} -c:v libx264 -crf 18 {args.restore}"
+        if args.stabilize:
+            cmd += " -filter:v deshake"
+        if args.denoise:
+            cmd += " -vf hqdn3d"
+        if args.color:
+            cmd += " -vf eq=brightness=0.05:saturation=1.2"
+        if args.upscale:
+            cmd += " -vf scale=1920:1080"
+        if args.interpolate:
+            cmd += " -vf minterpolate=fps=60"
+        subprocess.run(cmd, shell=True, check=True)
 
-    if args.interpolate:
-        print("Running interpolation...")
-        # Add your interpolation logic here
-        # Example:
-        # subprocess.run(['ffmpeg', '-i', args.input, '-vf', 'interpolate', args.preview])
+    print("✅ Processing completed successfully!")
 
-    # Final message
-    print("Video processing complete.")
+# Main function to execute the processing
+def main():
+    args = parse_args()
+    process_video(args)
 
 if __name__ == "__main__":
     main()
