@@ -1,54 +1,64 @@
-name: Video Processing (Preview or Restore)
+name: Video Restoration
 
 on:
   workflow_dispatch:
-    inputs:
-      mode:
-        description: "Choose processing mode"
-        required: true
-        default: "preview"
-        type: choice
-        options:
-          - preview
-          - restore
+  push:
+    paths:
+      - '**.py'
+      - 'requirements.txt'
+      - '.github/workflows/restore.yml'
 
 jobs:
-  process_video:
+  restore:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout repo (with submodules)
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
+      # Step 2: Set up Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
+      # Step 3: Install dependencies
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           pip install --upgrade pip
-          pip install -r requirements.txt || echo "⚠️ Partial dependency install"
+          pip install -r requirements.txt || echo "Requirements install had warnings."
 
-      - name: Download test video
+      # Step 4: Copy uploaded video to input folder
+      - name: Prepare test video
         run: |
           mkdir -p input
-          curl -L -o input/sample.mp4 https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4
+          if [ -f "assets/sample.mp4" ]; then
+            cp assets/sample.mp4 input/sample.mp4
+          else
+            echo "❌ ERROR: assets/sample.mp4 not found in repo." && exit 1
+          fi
 
-      - name: Run processing
+      # Step 5: Verify video integrity before processing
+      - name: Verify video file
+        run: |
+          ffprobe -v error -show_format -show_streams input/sample.mp4 || (echo "❌ ERROR: Invalid video file." && exit 1)
+
+      # Step 6: Run preview mode
+      - name: Run Preview
         run: |
           mkdir -p output
-          python3 process_video.py \
+          python3 preview.py \
             --input input/sample.mp4 \
-            --output output/result.mp4 \
-            --mode ${{ github.event.inputs.mode }} || echo "⚠️ Script exited with warnings"
+            --output output/preview.mp4 || (echo "❌ Preview failed." && exit 1)
 
-      - name: Upload output
+      # Step 7: Upload result
+      - name: Upload Preview Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: processed-video
-          path: output/result.mp4
+          name: preview-output
+          path: output/preview.mp4
