@@ -1,54 +1,54 @@
-name: Video Restoration (Crush-Proof)
+name: Video Processing (Preview or Restore)
 
 on:
-  workflow_dispatch:  # Manual trigger from GitHub UI
-  push:
-    paths:
-      - '**.py'
-      - 'requirements.txt'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Choose processing mode"
+        required: true
+        default: "preview"
+        type: choice
+        options:
+          - preview
+          - restore
 
 jobs:
-  restore:
+  process_video:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout repo (with submodules if available)
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      # Step 2: Set up Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      # Step 3: Install dependencies
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           pip install --upgrade pip
-          pip install -r requirements.txt || echo "⚠️ Requirements partially installed, continuing..."
+          pip install -r requirements.txt || echo "⚠️ Partial dependency install"
 
-      # Step 4: Download a sample video
       - name: Download test video
         run: |
           mkdir -p input
           curl -L -o input/sample.mp4 https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4
 
-      # Step 5: Run crush-proof restore.py
-      - name: Run video restoration
+      - name: Run processing
         run: |
           mkdir -p output
-          python3 restore.py \
+          python3 process_video.py \
             --input input/sample.mp4 \
-            --output output/restored.mp4 || echo "⚠️ restore.py exited with warnings"
+            --output output/result.mp4 \
+            --mode ${{ github.event.inputs.mode }} || echo "⚠️ Script exited with warnings"
 
-      # Step 6: Upload restored video
-      - name: Upload restored video artifact
+      - name: Upload output
         uses: actions/upload-artifact@v4
         with:
-          name: restored-video
-          path: output/restored.mp4
+          name: processed-video
+          path: output/result.mp4
